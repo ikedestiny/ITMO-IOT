@@ -1,0 +1,121 @@
+[
+  {
+    "id": "tab-occupancy",
+    "type": "tab",
+    "label": "Occupancy Pipeline",
+    "disabled": false
+  },
+  {
+    "id": "mqtt-in-status",
+    "type": "mqtt in",
+    "z": "tab-occupancy",
+    "name": "coworking/status",
+    "topic": "coworking/+/status",
+    "qos": "1",
+    "datatype": "json",
+    "broker": "mqtt-broker",
+    "x": 120,
+    "y": 80,
+    "wires": [["parse-status"]]
+  },
+  {
+    "id": "mqtt-in-sensors",
+    "type": "mqtt in",
+    "z": "tab-occupancy",
+    "name": "coworking/sensors/#",
+    "topic": "coworking/+/sensors/#",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "mqtt-broker",
+    "x": 120,
+    "y": 160,
+    "wires": [["parse-sensors"]]
+  },
+  {
+    "id": "mqtt-in-health",
+    "type": "mqtt in",
+    "z": "tab-occupancy",
+    "name": "device/health",
+    "topic": "coworking/+/device/health",
+    "qos": "1",
+    "datatype": "json",
+    "broker": "mqtt-broker",
+    "x": 120,
+    "y": 240,
+    "wires": [["parse-health"]]
+  },
+  {
+    "id": "parse-status",
+    "type": "function",
+    "z": "tab-occupancy",
+    "name": "Parse Status",
+    "func": "// topic: coworking/<room_id>/status\nconst parts = msg.topic.split('/');\nconst room_id = parts[1];\nconst payload = msg.payload;\n\nmsg.payload = {\n    measurement: 'occupancy',\n    tags: { room_id: room_id },\n    fields: {\n        status: payload.status === 'busy' ? 1 : 0,\n        status_str: payload.status\n    },\n    timestamp: new Date()\n};\nreturn msg;",
+    "x": 340,
+    "y": 80,
+    "wires": [["influx-write"]]
+  },
+  {
+    "id": "parse-sensors",
+    "type": "function",
+    "z": "tab-occupancy",
+    "name": "Parse Sensors",
+    "func": "// topic: coworking/<room_id>/sensors/<type>\nconst parts = msg.topic.split('/');\nconst room_id = parts[1];\nconst sensor_type = parts[3]; // motion or noise\nconst payload = msg.payload;\n\nmsg.payload = {\n    measurement: 'sensors',\n    tags: { room_id: room_id, sensor_type: sensor_type },\n    fields: {\n        value: payload.value ? 1 : 0,\n        raw: payload.raw || 0\n    },\n    timestamp: new Date()\n};\nreturn msg;",
+    "x": 340,
+    "y": 160,
+    "wires": [["influx-write"]]
+  },
+  {
+    "id": "parse-health",
+    "type": "function",
+    "z": "tab-occupancy",
+    "name": "Parse Health",
+    "func": "const parts = msg.topic.split('/');\nconst room_id = parts[1];\nconst payload = msg.payload;\n\nmsg.payload = {\n    measurement: 'device_health',\n    tags: { room_id: room_id },\n    fields: {\n        online: payload.status === 'online' ? 1 : 0,\n        rssi: payload.rssi || 0,\n        uptime: payload.uptime || 0,\n        reconnects: payload.reconnects || 0\n    },\n    timestamp: new Date()\n};\nreturn msg;",
+    "x": 340,
+    "y": 240,
+    "wires": [["influx-write"]]
+  },
+  {
+    "id": "influx-write",
+    "type": "influxdb out",
+    "z": "tab-occupancy",
+    "name": "Write to InfluxDB",
+    "influxdb": "influxdb-config",
+    "measurement": "",
+    "precision": "ms",
+    "retentionPolicy": "",
+    "x": 580,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "mqtt-broker",
+    "type": "mqtt-broker",
+    "name": "Mosquitto",
+    "broker": "mosquitto",
+    "port": "1883",
+    "clientid": "node-red",
+    "usetls": false,
+    "credentials": {
+      "user": "server",
+      "password": "serverpass"
+    }
+  },
+  {
+    "id": "influxdb-config",
+    "type": "influxdb",
+    "hostname": "influxdb",
+    "port": "8086",
+    "protocol": "http",
+    "database": "occupancy",
+    "name": "InfluxDB",
+    "usetls": false,
+    "influxdbVersion": "2.0",
+    "url": "http://influxdb:8086",
+    "rejectUnauthorized": false,
+    "credentials": {
+      "token": "my-super-secret-token",
+      "organization": "coworking",
+      "defaultBucket": "occupancy"
+    }
+  }
+]
