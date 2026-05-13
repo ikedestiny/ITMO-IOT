@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ATELIER — Smart Space Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: radial-gradient(circle at 10% 30%, #0B1120, #030712);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+        
+        /* Glassmorphism core */
+        .glass-panel {
+            background: rgba(15, 25, 45, 0.55);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            border-radius: 2.5rem;
+            box-shadow: 0 25px 40px -12px rgba(0, 0, 0, 0.5), inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+        
+        .glass-panel-dark {
+            background: rgba(8, 14, 26, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+        
+        .status-orb {
+            transition: all 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+        
+        .pulse-ring {
+            animation: softPulse 2.2s infinite;
+        }
+        
+        @keyframes softPulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        
+        .pulse-ring-busy {
+            animation: busyPulse 1.8s infinite;
+        }
+        
+        @keyframes busyPulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        .modern-input {
+            background: rgba(2, 8, 23, 0.7);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            border-radius: 1.25rem;
+            padding: 0.85rem 1.2rem;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            color: #f1f5f9;
+            font-weight: 450;
+            outline: none;
+        }
+        
+        .modern-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+            background: rgba(10, 20, 35, 0.9);
+        }
+        
+        .btn-glow {
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-glow:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.02);
+            box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn-glow:active {
+            transform: translateY(1px);
+        }
+        
+        .fade-in {
+            animation: fadeSlideUp 0.4s ease-out;
+        }
+        
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Connection status indicator */
+        .connection-badge {
+            transition: all 0.3s ease;
+        }
+        
+        /* Skeleton loading animation */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, rgba(51, 65, 85, 0.3) 25%, rgba(71, 85, 105, 0.5) 50%, rgba(51, 65, 85, 0.3) 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body class="p-5 md:p-8 flex items-center justify-center min-h-screen">
+    <div class="max-w-xl w-full mx-auto space-y-6 fade-in">
+        
+        <!-- STATUS CARD -->
+        <div class="glass-panel p-6 md:p-8 relative overflow-hidden">
+            <div class="absolute -right-20 -top-20 w-56 h-56 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -left-16 -bottom-16 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="relative z-2">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2 bg-slate-800/60 backdrop-blur-sm rounded-full px-3 py-1 border border-slate-700/60">
+                        <i class="fas fa-microchip text-xs text-cyan-400"></i>
+                        <span class="text-[11px] font-mono font-semibold tracking-wide text-slate-300">STUDIO ALPHA</span>
+                    </div>
+                    <div id="connection-status" class="flex items-center gap-1.5 connection-badge">
+                        <div class="relative w-2 h-2">
+                            <span class="absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75 animate-ping"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                        </div>
+                        <span class="text-[10px] font-mono text-slate-400 tracking-wide">CONNECTING</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-center justify-center my-1">
+                    <div class="relative">
+                        <div id="status-orb-ring" class="status-orb w-32 h-32 rounded-full flex items-center justify-center transition-all duration-700">
+                            <div id="status-icon" class="text-5xl drop-shadow-lg">⌛</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <h2 id="status-text" class="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">—</h2>
+                        <div class="flex items-center justify-center gap-2 mt-2">
+                            <i class="fas fa-clock text-slate-500 text-xs"></i>
+                            <p id="status-time" class="text-slate-400 text-xs font-mono tracking-wide">--:--:--</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-1">
+                    <div class="flex justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+                        <span>Occupancy confidence</span>
+                        <span id="readiness-percent" class="font-mono text-cyan-300">0%</span>
+                    </div>
+                    <div class="h-1.5 w-full bg-slate-800/70 rounded-full overflow-hidden">
+                        <div id="readiness-bar" class="h-full w-0 rounded-full transition-all duration-700 ease-out" style="background: linear-gradient(90deg, #2dd4bf, #3b82f6);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BOOKING SECTION -->
+        <div class="glass-panel glass-panel-dark p-6 md:p-7 transition-all">
+            <div id="login-section" class="fade-in">
+                <div id="login-form" class="space-y-5">
+                    <div class="flex items-center gap-3 border-b border-slate-700/50 pb-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+                            <i class="fas fa-lock text-sm text-blue-300"></i>
+                        </div>
+                        <h3 class="font-semibold text-xl tracking-tight text-slate-100">Admin access</h3>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="relative group">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                            <input type="text" id="username" placeholder="Username" class="modern-input w-full pl-10" value="admin">
+                        </div>
+                        <div class="relative group">
+                            <i class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                            <input type="password" id="password" placeholder="Password" class="modern-input w-full pl-10" value="admin">
+                        </div>
+                        <button onclick="login()" class="btn-glow w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                            <i class="fas fa-arrow-right-to-bracket text-sm"></i> Authenticate
+                        </button>
+                    </div>
+                </div>
+
+                <div id="booking-form" class="hidden space-y-5 fade-in">
+                    <div class="flex justify-between items-center border-b border-slate-700/40 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-calendar-check text-cyan-400 text-xl"></i>
+                            <h3 class="font-semibold text-xl tracking-tight text-slate-100">New session</h3>
+                        </div>
+                        <button onclick="logout()" class="text-xs flex items-center gap-1 bg-slate-800/70 hover:bg-red-500/10 px-3 py-1.5 rounded-full transition-all text-red-300 border border-red-500/20">
+                            <i class="fas fa-sign-out-alt text-[11px]"></i> Exit
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <i class="fas fa-user-astronaut absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="user_name" placeholder="Full name" class="modern-input w-full pl-10" autocomplete="off">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="relative">
+                                <i class="fas fa-play absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-cyan-400/70"></i>
+                                <input type="datetime-local" id="start_time" class="modern-input w-full pl-7 text-sm font-mono">
+                            </div>
+                            <div class="relative">
+                                <i class="fas fa-stop absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-rose-400/70"></i>
+                                <input type="datetime-local" id="end_time" class="modern-input w-full pl-7 text-sm font-mono">
+                            </div>
+                        </div>
+                        <button onclick="createBooking()" class="btn-glow w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2">
+                            <i class="fas fa-check-circle"></i> Confirm reservation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-center items-center gap-3 text-[10px] font-mono text-slate-500 pt-2">
+            <i class="fas fa-waveform"></i>
+            <span>MQTT realtime sync</span>
+            <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+            <span>Edge intelligence active</span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+        let token = localStorage.getItem('token');
+        let connectionRetries = 0;
+        let isBackendReachable = true;
+        
+        const statusTextEl = document.getElementById('status-text');
+        const statusTimeEl = document.getElementById('status-time');
+        const statusOrbDiv = document.getElementById('status-orb-ring');
+        const statusIconSpan = document.getElementById('status-icon');
+        const readinessPercent = document.getElementById('readiness-percent');
+        const readinessBar = document.getElementById('readiness-bar');
+        const connectionStatusEl = document.getElementById('connection-status');
+        
+        // Mock data for offline/fallback mode
+        let mockData = {
+            status: 'free',
+            timestamp: new Date().toISOString()
+        };
+        
+        function updateConnectionStatus(connected, message = '') {
+            const badge = connectionStatusEl;
+            if (connected) {
+                badge.innerHTML = `
+                    <div class="relative w-2 h-2">
+                        <span class="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400 tracking-wide">${message || 'LIVE SYNC'}</span>
+                `;
+            } else {
+                badge.innerHTML = `
+                    <div class="relative w-2 h-2">
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </div>
+                    <span class="text-[10px] font-mono text-red-400 tracking-wide">${message || 'OFFLINE MODE'}</span>
+                `;
+            }
+        }
+        
+        async function updateStatus() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const res = await fetch(`${API_BASE}/status?room_id=room1`, {
+                    signal: controller.signal,
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                
+                isBackendReachable = true;
+                connectionRetries = 0;
+                updateConnectionStatus(true, 'LIVE SYNC');
+                
+                const rawStatus = (data.status || 'unknown').toLowerCase();
+                let displayStatus = rawStatus === 'busy' ? 'OCCUPIED' : (rawStatus === 'free' ? 'AVAILABLE' : 'UNKNOWN');
+                statusTextEl.innerText = displayStatus;
+                
+                const formattedTime = new Date(data.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+                statusTimeEl.innerText = `${formattedTime}`;
+                
+                let orbColor, pulseClass, readinessVal = 0;
+                if (rawStatus === 'busy' || rawStatus === 'occupied') {
+                    orbColor = "bg-red-500/10 border-4 border-red-500";
+                    pulseClass = "pulse-ring-busy";
+                    readinessVal = 98;
+                    statusIconSpan.innerHTML = '<i class="fa-solid fa-door-closed text-5xl drop-shadow-md"></i>';
+                    statusTextEl.className = "text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-rose-300 to-red-400 bg-clip-text text-transparent";
+                    readinessBar.style.background = "linear-gradient(90deg, #ef4444, #b91c1c)";
+                } 
+                else if (rawStatus === 'free') {
+                    orbColor = "bg-emerald-500/15 border-4 border-emerald-400";
+                    pulseClass = "pulse-ring";
+                    readinessVal = 24;
+                    statusIconSpan.innerHTML = '<i class="fa-regular fa-calendar-circle-plus text-5xl"></i>';
+                    statusTextEl.className = "text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent";
+                    readinessBar.style.background = "linear-gradient(90deg, #2dd4bf, #3b82f6)";
+                } 
+                else {
+                    orbColor = "bg-amber-500/10 border-4 border-amber-500/60";
+                    pulseClass = "";
+                    readinessVal = 45;
+                    statusIconSpan.innerHTML = '<i class="fa-solid fa-microchip-ai text-5xl"></i>';
+                    statusTextEl.className = "text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-slate-300 to-slate-500 bg-clip-text text-transparent";
+                    readinessBar.style.background = "linear-gradient(90deg, #f59e0b, #d97706)";
+                }
+                
+                statusOrbDiv.className = `status-orb w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500 ${orbColor} ${pulseClass}`;
+                readinessPercent.innerText = `${readinessVal}%`;
+                readinessBar.style.width = `${readinessVal}%`;
+                
+            } catch (err) {
+                console.warn("Status fetch failed, using fallback:", err.message);
+                isBackendReachable = false;
+                connectionRetries++;
+                
+                if (connectionRetries > 2) {
+                    updateConnectionStatus(false, 'OFFLINE MODE');
+                }
+                
+                // Use mock/fallback data for better UX
+                const fallbackStatus = mockData.status;
+                let displayStatus = fallbackStatus === 'busy' ? 'OCCUPIED' : (fallbackStatus === 'free' ? 'AVAILABLE' : 'UNKNOWN');
+                statusTextEl.innerText = displayStatus;
+                statusTimeEl.innerText = new Date().toLocaleTimeString();
+                
+                if (fallbackStatus === 'busy') {
+                    statusOrbDiv.className = "status-orb w-32 h-32 rounded-full flex items-center justify-center bg-red-500/10 border-4 border-red-500 pulse-ring-busy";
+                    statusIconSpan.innerHTML = '<i class="fa-solid fa-door-closed text-5xl drop-shadow-md"></i>';
+                    statusTextEl.className = "text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-rose-300 to-red-400 bg-clip-text text-transparent";
+                    readinessPercent.innerText = "98%";
+                    readinessBar.style.width = "98%";
+                    readinessBar.style.background = "linear-gradient(90deg, #ef4444, #b91c1c)";
+                } else {
+                    statusOrbDiv.className = "status-orb w-32 h-32 rounded-full flex items-center justify-center bg-emerald-500/15 border-4 border-emerald-400 pulse-ring";
+                    statusIconSpan.innerHTML = '<i class="fa-regular fa-calendar-circle-plus text-5xl"></i>';
+                    statusTextEl.className = "text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent";
+                    readinessPercent.innerText = "24%";
+                    readinessBar.style.width = "24%";
+                    readinessBar.style.background = "linear-gradient(90deg, #2dd4bf, #3b82f6)";
+                }
+            }
+        }
+        
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                showFloatingMessage("Please enter credentials", "error");
+                return;
+            }
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                
+                const res = await fetch(`${API_BASE}/auth/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.access_token;
+                    localStorage.setItem('token', token);
+                    showBookingForm();
+                    showFloatingMessage("Authentication successful", "success");
+                    updateConnectionStatus(true, 'AUTHENTICATED');
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    showFloatingMessage(`Access denied: ${errData.detail || 'Invalid credentials'}`, "error");
+                }
+            } catch (err) {
+                showFloatingMessage("Cannot reach server. Please ensure backend is running on port 8000", "error");
+                console.error("Login error:", err);
+            }
+        }
+        
+        function showBookingForm() {
+            const loginDiv = document.getElementById('login-form');
+            const bookingDiv = document.getElementById('booking-form');
+            loginDiv.classList.add('hidden');
+            bookingDiv.classList.remove('hidden');
+            
+            // Set default times
+            const now = new Date();
+            const startDefault = new Date(now.getTime() + 30 * 60000);
+            const endDefault = new Date(startDefault.getTime() + 60 * 60000);
+            const startInput = document.getElementById('start_time');
+            const endInput = document.getElementById('end_time');
+            
+            if (startInput && !startInput.value) {
+                startInput.value = startDefault.toISOString().slice(0, 16);
+            }
+            if (endInput && !endInput.value) {
+                endInput.value = endDefault.toISOString().slice(0, 16);
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('token');
+            token = null;
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('booking-form').classList.add('hidden');
+            document.getElementById('username').value = 'admin';
+            document.getElementById('password').value = 'admin';
+            document.getElementById('user_name').value = '';
+            document.getElementById('start_time').value = '';
+            document.getElementById('end_time').value = '';
+            showFloatingMessage("Logged out successfully", "success");
+        }
+        
+        async function createBooking() {
+            if (!token) {
+                showFloatingMessage("Session expired. Please log in again.", "error");
+                logout();
+                return;
+            }
+            
+            const userName = document.getElementById('user_name').value.trim();
+            const startRaw = document.getElementById('start_time').value;
+            const endRaw = document.getElementById('end_time').value;
+            
+            if (!userName) {
+                showFloatingMessage("Please enter your name", "error");
+                return;
+            }
+            if (!startRaw || !endRaw) {
+                showFloatingMessage("Select both start and end time", "error");
+                return;
+            }
+            
+            const startDate = new Date(startRaw);
+            const endDate = new Date(endRaw);
+            
+            if (startDate >= endDate) {
+                showFloatingMessage("End time must be after start time", "error");
+                return;
+            }
+            if (startDate < new Date()) {
+                showFloatingMessage("Start time cannot be in the past", "error");
+                return;
+            }
+            
+            const payload = {
+                room_id: "room1",
+                user_name: userName,
+                start_time: startDate.toISOString(),
+                end_time: endDate.toISOString()
+            };
+            
+            const btn = document.querySelector('#booking-form button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Syncing...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE}/booking`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    showFloatingMessage("✓ Booking confirmed! Device synced via MQTT.", "success");
+                    document.getElementById('user_name').value = '';
+                    // Update mock data for better offline experience
+                    mockData.status = 'busy';
+                    setTimeout(() => updateStatus(), 500);
+                } else {
+                    let errMsg = "Booking failed";
+                    try {
+                        const err = await res.json();
+                        errMsg = err.detail || "Time slot conflict or server error";
+                    } catch(e) {}
+                    showFloatingMessage(`⚠️ ${errMsg}`, "error");
+                }
+            } catch (err) {
+                showFloatingMessage("Network error. Please check if backend is running.", "error");
+                console.error("Booking error:", err);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        function showFloatingMessage(msg, type = "success") {
+            let toastContainer = document.getElementById('custom-toast');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'custom-toast';
+                toastContainer.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-auto max-w-sm transition-all duration-500';
+                document.body.appendChild(toastContainer);
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = `glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl mb-3 text-sm font-medium border-l-4 ${type === 'success' ? 'border-emerald-400 text-emerald-200' : 'border-rose-400 text-rose-200'}`;
+            toast.style.background = "rgba(10, 20, 35, 0.95)";
+            toast.style.backdropFilter = "blur(12px)";
+            const icon = type === 'success' ? '<i class="fas fa-check-circle text-emerald-400 text-md"></i>' : '<i class="fas fa-exclamation-triangle text-rose-400 text-md"></i>';
+            toast.innerHTML = `${icon} <span>${msg}</span>`;
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+        
+        function initAuth() {
+            if (token) {
+                showBookingForm();
+            }
+        }
+        
+        // Initialize with default times
+        function setDefaultTimes() {
+            const now = new Date();
+            const startInput = document.getElementById('start_time');
+            const endInput = document.getElementById('end_time');
+            if (startInput && !startInput.value) {
+                startInput.value = new Date(now.getTime() + 30 * 60000).toISOString().slice(0, 16);
+            }
+            if (endInput && !endInput.value) {
+                endInput.value = new Date(now.getTime() + 90 * 60000).toISOString().slice(0, 16);
+            }
+        }
+        
+        // Toggle mock data periodically for demo when offline
+        setInterval(() => {
+            if (!isBackendReachable && connectionRetries > 3) {
+                // Toggle mock data to simulate activity when offline
+                mockData.status = mockData.status === 'free' ? 'busy' : 'free';
+                updateStatus();
+            }
+        }, 15000);
+        
+        setInterval(() => updateStatus(), 4000);
+        updateStatus();
+        initAuth();
+        setDefaultTimes();
+        
+        window.addEventListener('load', () => {
+            document.body.classList.add('fade-in');
+        });
+    </script>
+</body>
+</html>

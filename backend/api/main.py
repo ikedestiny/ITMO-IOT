@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware  # <--- THIS WAS MISSING
 from datetime import datetime, timedelta
 from typing import Optional, List
 import jwt
@@ -12,6 +13,15 @@ from influxdb_client import InfluxDBClient
 from influxdb_client.client.query_api import QueryApi
 
 app = FastAPI(title="Coworking API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # This allows your browser to access the API
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 security = HTTPBearer()
 
 # ─── Config ───────────────────────────────────────────────────────────────────

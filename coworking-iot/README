@@ -1,0 +1,7 @@
+For platformio, after compiling witth the cheque tick, you do this in terminal:
+pio run --target upload  ------> to upload to nodemcu
+pio device monitor --baud 115200 -----> to start up
+
+
+or just
+pio run -t upload && pio device monitor

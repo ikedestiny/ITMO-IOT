@@ -1,63 +1,80 @@
+import serial
 import paho.mqtt.client as mqtt
 import requests
 import json
 import os
 import time
+import threading
 
-MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_USER = os.getenv("MQTT_USER", "server")
-MQTT_PASS = os.getenv("MQTT_PASS", "serverpass")
-INFLUX_URL = os.getenv("INFLUX_URL", "http://influxdb:8086")
-INFLUX_TOKEN = os.getenv("INFLUX_TOKEN", "my-super-secret-token")
-INFLUX_ORG = os.getenv("INFLUX_ORG", "coworking")
-INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "occupancy")
+# --- Config ---
+MQTT_BROKER = "localhost" # Since this runs on Fedora, use localhost for Docker port 1883
+MQTT_PORT   = 1883
+MQTT_USER   = "server"
+MQTT_PASS   = "serverpass"
+INFLUX_URL  = "http://localhost:8086" 
+INFLUX_TOKEN = "my-super-secret-token"
+INFLUX_ORG   = "coworking"
+INFLUX_BUCKET = "occupancy"
+SERIAL_PORT  = "/dev/ttyUSB0"
+BAUD_RATE    = 115200
 
 def write_influx(line):
-    r = requests.post(
-        f"{INFLUX_URL}/api/v2/write?org={INFLUX_ORG}&bucket={INFLUX_BUCKET}&precision=s",
-        headers={"Authorization": f"Token {INFLUX_TOKEN}"},
-        data=line
-    )
-    return r.status_code
+    try:
+        r = requests.post(
+            f"{INFLUX_URL}/api/v2/write?org={INFLUX_ORG}&bucket={INFLUX_BUCKET}&precision=s",
+            headers={"Authorization": f"Token {INFLUX_TOKEN}"},
+            data=line,
+            timeout=5
+        )
+        return r.status_code
+    except Exception as e:
+        print(f"Influx Error: {e}")
+        return 500
 
+# --- Serial Listener Thread ---
+def serial_worker():
+    print(f"Starting Serial Listener on {SERIAL_PORT}...")
+    while True:
+        try:
+            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser:
+                while True:
+                    if ser.in_waiting > 0:
+                        line = ser.readline().decode('utf-8').strip()
+                        if line == "OCCUPIED_EVENT":
+                            print("USB Event: Motion/Sound Detected")
+                            # Manually write the same data your MQTT handler would
+                            influx_line = 'occupancy,room_id=room1 status=1,status_str="busy"'
+                            code = write_influx(influx_line)
+                            print(f"USB Event -> InfluxDB {code}")
+        except Exception as e:
+            print(f"Serial Port Error: {e}. Retrying in 5s...")
+            time.sleep(5)
+
+# --- MQTT Logic ---
 def on_message(client, userdata, msg):
+    # (Keep your existing MQTT logic here for when you use Wi-Fi later)
     try:
         payload = json.loads(msg.payload)
         topic_parts = msg.topic.split('/')
         room_id = topic_parts[1] if len(topic_parts) > 1 else "room1"
-
-        if "status" in msg.topic and "sensors" not in msg.topic:
-            status = payload.get("status", "unknown")
-            status_int = 1 if status == "busy" else 0
+        
+        if "occupancy" in msg.topic:
+            status = payload.get("status_str", "unknown")
+            status_int = 1 if status == "busy" or status == "occupied" else 0
             line = f'occupancy,room_id={room_id} status={status_int},status_str="{status}"'
-            code = write_influx(line)
-            print(f"[{msg.topic}] {status} -> InfluxDB {code}")
-
-        elif "sensors/motion" in msg.topic:
-            value = 1 if payload.get("value") else 0
-            line = f'sensors,room_id={room_id},sensor_type=motion value={value}'
             write_influx(line)
-
-        elif "sensors/noise" in msg.topic:
-            value = 1 if payload.get("value") else 0
-            line = f'sensors,room_id={room_id},sensor_type=noise value={value}'
-            write_influx(line)
-
-        elif "device/health" in msg.topic:
-            rssi = payload.get("rssi", 0)
-            uptime = payload.get("uptime", 0)
-            online = 1 if payload.get("status") == "online" else 0
-            line = f'device_health,room_id={room_id} online={online},rssi={rssi},uptime={uptime}'
-            write_influx(line)
-
-    except Exception as e:
-        print(f"Error: {e}")
+    except: pass
 
 def on_connect(client, userdata, flags, rc):
     print(f"Connected to MQTT broker (rc={rc})")
     client.subscribe("coworking/#")
 
+# --- Start Threads ---
+# Start Serial in a background thread
+t = threading.Thread(target=serial_worker, daemon=True)
+t.start()
+
+# Start MQTT in the main thread
 client = mqtt.Client()
 client.username_pw_set(MQTT_USER, MQTT_PASS)
 client.on_connect = on_connect
@@ -68,5 +85,5 @@ while True:
         client.connect(MQTT_BROKER, MQTT_PORT)
         client.loop_forever()
     except Exception as e:
-        print(f"Connection failed: {e}, retrying in 5s...")
+        print(f"MQTT failed: {e}, retrying...")
         time.sleep(5)
