@@ -126,10 +126,11 @@ void loop() {
     }
 
     // Sound module: LOW when sound detected
-    if (soundState == LOW) {
-      Serial.println("SOUND_DETECTED");
+    if (soundState == ) {
+      Serial.println("SOUNDLOW_DETECTED");
       lastEventTime = currentTime;
     }
   }
+
   delay(10);
 }

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COWORK — Room Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080c10;
+  --surface:   #0d1520;
+  --border:    rgba(255,255,255,0.06);
+  --text:      #e8edf2;
+  --muted:     #4a5568;
+  --accent:    #00d4ff;
+  --green:     #00e87a;
+  --red:       #ff3b5c;
+  --amber:     #ffb020;
+  --mono:      'DM Mono', monospace;
+  --sans:      'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Grid background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.wordmark {
+  font-size: 0.65rem;
+  font-family: var(--mono);
+  letter-spacing: 0.35em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.conn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  transition: background 0.4s;
+}
+.conn-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.conn-dot.offline { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 1.75rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent);
+}
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Occupancy card ── */
+.occ-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2rem;
+}
+
+.occ-status-text {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  transition: color 0.5s, opacity 0.3s;
+}
+
+.occ-status-text.occupied { color: var(--red); }
+.occ-status-text.vacant   { color: var(--green); }
+.occ-status-text.unknown  { color: var(--muted); }
+
+.occ-meta {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.occ-ts {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.occ-badge {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid;
+  transition: all 0.4s;
+}
+.occ-badge.occupied { color: var(--red);   border-color: rgba(255,59,92,0.3);  background: rgba(255,59,92,0.08); }
+.occ-badge.vacant   { color: var(--green); border-color: rgba(0,232,122,0.3);  background: rgba(0,232,122,0.08); }
+.occ-badge.unknown  { color: var(--muted); border-color: rgba(74,85,104,0.3);  background: transparent; }
+
+/* Orb */
+.orb-wrap {
+  position: relative;
+  width: 100px; height: 100px;
+  flex-shrink: 0;
+}
+
+.orb {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  transition: border-color 0.5s, background 0.5s, box-shadow 0.5s;
+  position: relative;
+  z-index: 1;
+}
+
+.orb.occupied {
+  border-color: rgba(255,59,92,0.4);
+  background: rgba(255,59,92,0.06);
+  box-shadow: 0 0 30px rgba(255,59,92,0.15), inset 0 0 20px rgba(255,59,92,0.05);
+  animation: orbBusy 2s ease-in-out infinite;
+}
+.orb.vacant {
+  border-color: rgba(0,232,122,0.4);
+  background: rgba(0,232,122,0.06);
+  box-shadow: 0 0 30px rgba(0,232,122,0.15), inset 0 0 20px rgba(0,232,122,0.05);
+  animation: orbFree 3s ease-in-out infinite;
+}
+
+@keyframes orbBusy {
+  0%,100% { box-shadow: 0 0 30px rgba(255,59,92,0.15), inset 0 0 20px rgba(255,59,92,0.05); }
+  50%      { box-shadow: 0 0 50px rgba(255,59,92,0.35), inset 0 0 30px rgba(255,59,92,0.1); }
+}
+@keyframes orbFree {
+  0%,100% { box-shadow: 0 0 30px rgba(0,232,122,0.1), inset 0 0 20px rgba(0,232,122,0.04); }
+  50%      { box-shadow: 0 0 50px rgba(0,232,122,0.25), inset 0 0 30px rgba(0,232,122,0.08); }
+}
+
+/* ── Two-col row ── */
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; } }
+
+/* ── Access log ── */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  animation: fadeUp 0.3s ease;
+}
+
+.log-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.log-dot.denied  { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.log-dot.granted { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+.log-label { flex: 1; color: var(--text); }
+.log-time  { color: var(--muted); }
+
+.empty-state {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 0;
+  letter-spacing: 0.1em;
+}
+
+/* ── Auth / Booking ── */
+.field-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+
+.field-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.field-input {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.7rem 1rem;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field-input:focus {
+  border-color: rgba(0,212,255,0.4);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.08);
+}
+.field-input::placeholder { color: var(--muted); }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+.btn {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  margin-top: 0.25rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  font-weight: 500;
+}
+.btn-primary:hover { background: #33ddff; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+
+.btn-book {
+  background: rgba(0,232,122,0.12);
+  color: var(--green);
+  border: 1px solid rgba(0,232,122,0.25);
+}
+.btn-book:hover { background: rgba(0,232,122,0.2); box-shadow: 0 0 20px rgba(0,232,122,0.15); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-size: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  width: auto;
+  margin-top: 0;
+}
+.btn-danger:hover { color: var(--red); border-color: rgba(255,59,92,0.3); }
+
+/* section header row */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Toast ── */
+.toast-wrap {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.toast {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  max-width: 300px;
+}
+.toast.ok  { border-color: rgba(0,232,122,0.3);  color: var(--green); }
+.toast.err { border-color: rgba(255,59,92,0.3);   color: var(--red);   }
+.toast.inf { border-color: rgba(0,212,255,0.3);   color: var(--accent); }
+
+@keyframes toastIn  { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: none; } }
+@keyframes toastOut { from { opacity:1; } to { opacity:0; } }
+@keyframes fadeUp   { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+.hidden { display: none !important; }
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Header -->
+  <header class="header">
+    <span class="wordmark">Cowork // Room Intelligence</span>
+    <div class="conn-pill">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">connecting</span>
+    </div>
+  </header>
+
+  <!-- Occupancy -->
+  <div class="card">
+    <div class="card-label">Room Status — <span id="room-id-label">room1</span></div>
+    <div class="occ-card">
+      <div>
+        <div class="occ-status-text unknown" id="occ-text">—</div>
+        <div class="occ-meta">
+          <span class="occ-badge unknown" id="occ-badge">unknown</span>
+          <span class="occ-ts" id="occ-ts">--:--:--</span>
+        </div>
+      </div>
+      <div class="orb-wrap">
+        <div class="orb" id="occ-orb">⌛</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Access log + Auth side by side -->
+  <div class="row-2">
+
+    <!-- Access log -->
+    <div class="card">
+      <div class="section-head">
+        <span class="card-label" style="margin:0">Access log</span>
+        <span id="alert-count" style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);letter-spacing:0.1em"></span>
+      </div>
+      <div class="log-list" id="log-list">
+        <div class="empty-state">loading…</div>
+      </div>
+    </div>
+
+    <!-- Auth / Booking -->
+    <div class="card">
+
+      <!-- Login -->
+      <div id="login-panel">
+        <div class="card-label">Admin access</div>
+        <div class="field-group">
+          <label class="field-label">Username</label>
+          <input class="field-input" type="text" id="login-user" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <input class="field-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" id="login-btn">Authenticate</button>
+      </div>
+
+      <!-- Booking -->
+      <div id="booking-panel" class="hidden">
+        <div class="section-head">
+          <span class="card-label" style="margin:0">Book room</span>
+          <button class="btn btn-danger" id="logout-btn">Sign out</button>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Name</label>
+          <input class="field-input" type="text" id="book-name" placeholder="Alice (Manager)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Room ID</label>
+          <input class="field-input" type="text" id="book-room" value="room1">
+        </div>
+        <div class="field-row">
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Start</label>
+            <input class="field-input" type="datetime-local" id="book-start">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">End</label>
+            <input class="field-input" type="datetime-local" id="book-end">
+          </div>
+        </div>
+        <button class="btn btn-book" id="book-btn" style="margin-top:1rem">Reserve slot</button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Toasts -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+const API = 'http://localhost:8000';
+const ROOM = 'room1';
+let token = localStorage.getItem('cwt') || null;
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'inf') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+// ── Connection badge ──────────────────────────────────────────────────────────
+function setConn(state) {
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'conn-dot ' + state;
+  lbl.textContent = state === 'online' ? 'online' : state === 'offline' ? 'offline' : 'connecting';
+}
+
+// ── Occupancy ─────────────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch(`${API}/status?room_id=${ROOM}`);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    renderStatus(d.status, d.timestamp);
+    setConn('online');
+  } catch {
+    renderStatus('unknown', null);
+    setConn('offline');
+  }
+}
+
+function renderStatus(status, ts) {
+  const text  = document.getElementById('occ-text');
+  const badge = document.getElementById('occ-badge');
+  const orb   = document.getElementById('occ-orb');
+  const time  = document.getElementById('occ-ts');
+
+  // clear classes
+  ['occupied','vacant','unknown'].forEach(c => {
+    text.classList.remove(c);
+    badge.classList.remove(c);
+    orb.classList.remove(c);
+  });
+
+  if (status === 'occupied') {
+    text.textContent  = 'Occupied';
+    badge.textContent = 'occupied';
+    orb.textContent   = '👤';
+    text.classList.add('occupied');
+    badge.classList.add('occupied');
+    orb.classList.add('occupied');
+  } else if (status === 'vacant') {
+    text.textContent  = 'Vacant';
+    badge.textContent = 'vacant';
+    orb.textContent   = '○';
+    text.classList.add('vacant');
+    badge.classList.add('vacant');
+    orb.classList.add('vacant');
+  } else {
+    text.textContent  = 'Unknown';
+    badge.textContent = 'no data';
+    orb.textContent   = '—';
+    text.classList.add('unknown');
+    badge.classList.add('unknown');
+  }
+
+  if (ts) {
+    time.textContent = new Date(ts).toLocaleTimeString();
+  }
+}
+
+// ── Access log ────────────────────────────────────────────────────────────────
+async function pollAlerts() {
+  if (!token) return;
+  try {
+    const r = await fetch(`${API}/keypad/alerts?room_id=${ROOM}&hours=24`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (r.status === 401) { doLogout(); return; }
+    if (!r.ok) throw new Error(r.status);
+    const alerts = await r.json();
+    renderAlerts(alerts);
+  } catch {
+    // silently fail — log is non-critical
+    renderAlerts("jhdcghd jkdjw")
+  }
+}
+
+function renderAlerts(alerts) {
+  const list  = document.getElementById('log-list');
+  const count = document.getElementById('alert-count');
+
+  if (!alerts.length) {
+    list.innerHTML = '<div class="empty-state">no denied attempts in 24h</div>';
+    count.textContent = '';
+    return;
+  }
+
+  count.textContent = `${alerts.length} attempt${alerts.length > 1 ? 's' : ''}`;
+  list.innerHTML = '';
+  alerts.slice(0, 12).forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    const timeStr = new Date(a.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    row.innerHTML = `
+      <div class="log-dot ${a.result}"></div>
+      <span class="log-label">${a.result === 'denied' ? 'Denied entry' : a.user || 'Access granted'}</span>
+      <span class="log-time">${timeStr}</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (!u || !p) { toast('Fill in both fields', 'err'); return; }
+  try {
+    const r = await fetch(`${API}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    if (!r.ok) throw new Error('bad credentials');
+    const d = await r.json();
+    token = d.access_token;
+    localStorage.setItem('cwt', token);
+    showBooking();
+    pollAlerts();
+    toast('Authenticated', 'ok');
+  } catch {
+    toast('Authentication failed', 'err');
+  }
+});
+
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+
+function doLogout() {
+  localStorage.removeItem('cwt');
+  token = null;
+  document.getElementById('login-panel').classList.remove('hidden');
+  document.getElementById('booking-panel').classList.add('hidden');
+  document.getElementById('log-list').innerHTML = '<div class="empty-state">sign in to view log</div>';
+  document.getElementById('alert-count').textContent = '';
+}
+
+function showBooking() {
+  document.getElementById('login-panel').classList.add('hidden');
+  document.getElementById('booking-panel').classList.remove('hidden');
+  // Pre-fill sensible defaults
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  now.setHours(now.getHours() + 1);
+  document.getElementById('book-start').value = now.toISOString().slice(0,16);
+  const end = new Date(now);
+  end.setHours(end.getHours() + 2);
+  document.getElementById('book-end').value = end.toISOString().slice(0,16);
+}
+
+// ── Booking ───────────────────────────────────────────────────────────────────
+document.getElementById('book-btn').addEventListener('click', async () => {
+  const name  = document.getElementById('book-name').value.trim();
+  const room  = document.getElementById('book-room').value.trim();
+  const start = document.getElementById('book-start').value;
+  const end   = document.getElementById('book-end').value;
+
+  if (!name || !room || !start || !end) { toast('Fill all fields', 'err'); return; }
+
+  const s = new Date(start), e = new Date(end);
+  if (s >= e) { toast('End must be after start', 'err'); return; }
+
+  try {
+    const r = await fetch(`${API}/booking`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        room_id: room,
+        user_name: name,
+        start_time: s.toISOString(),
+        end_time: e.toISOString()
+      })
+    });
+    if (r.status === 401) { doLogout(); toast('Session expired', 'err'); return; }
+    if (r.status === 409) { toast('Time slot already booked', 'err'); return; }
+    if (!r.ok) throw new Error('server error');
+    toast('Slot reserved', 'ok');
+    document.getElementById('book-name').value = '';
+  } catch {
+    toast('Booking failed', 'err');
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+if (token) {
+  showBooking();
+  pollAlerts();
+} else {
+  document.getElementById('log-list').innerHTML =
+    '<div class="empty-state">sign in to view log</div>';
+}
+
+pollStatus();
+setInterval(pollStatus, 4000);
+setInterval(() => { if (token) pollAlerts(); }, 15000);
+</script>
+</body>
+</html>

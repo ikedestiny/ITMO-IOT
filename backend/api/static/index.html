@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>COWORK · smart room intelligence</title>
+  <!-- Chart.js CDN for statistics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #080c10;
+      --surface: #0d1520;
+      --border: rgba(255,255,255,0.06);
+      --text: #e8edf2;
+      --muted: #6c7a8a;
+      --accent: #00d4ff;
+      --green: #00e87a;
+      --red: #ff3b5c;
+      --amber: #ffb020;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+
+    /* grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    /* header */
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .wordmark {
+      font-size: 0.7rem;
+      font-family: var(--mono);
+      letter-spacing: 0.4em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .conn-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+      transition: background 0.2s;
+    }
+    .conn-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .conn-dot.offline { background: var(--red); }
+
+    /* tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 2rem;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.3);
+    }
+    .tab-btn:hover:not(.active) {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    /* occupancy card */
+    .occ-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .occ-status {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1;
+    }
+    .occ-status.occupied { color: var(--red); }
+    .occ-status.vacant { color: var(--green); }
+    .occ-ts {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .orb {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+    .orb.occupied { border-color: var(--red); background: rgba(255,59,92,0.05); }
+    .orb.vacant { border-color: var(--green); background: rgba(0,232,122,0.05); }
+
+    /* tables / lists */
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--accent);
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+    .badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 20px;
+      font-size: 0.6rem;
+      background: rgba(0,0,0,0.3);
+    }
+    .badge.granted { color: var(--green); border:1px solid rgba(0,232,122,0.3); }
+    .badge.denied { color: var(--red); border:1px solid rgba(255,59,92,0.3); }
+
+    .btn-sm {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      border-radius: 1rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      cursor: pointer;
+    }
+    .btn-sm.danger:hover { border-color: var(--red); color: var(--red); }
+
+    .field-group {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .field-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+    }
+    .field-input {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.6rem 1rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+    .btn {
+      background: var(--accent);
+      border: none;
+      padding: 0.7rem 1.2rem;
+      border-radius: 1rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #000;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .toast-wrap {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      border-radius: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      animation: fadein 0.2s;
+    }
+    @keyframes fadein { from { opacity:0; transform: translateY(5px); } to { opacity:1; } }
+    .hidden { display: none !important; }
+    .flex { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width:700px){ .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="wordmark">COWORK // ROOM INTELLIGENCE</span>
+    <div class="conn-pill"><div class="conn-dot" id="connDot"></div><span id="connLabel">connecting</span></div>
+  </div>
+
+  <div class="conn-pill">
+  <div class="conn-dot" id="connDot"></div>
+  <span id="connLabel">connecting</span>
+  <button id="logoutBtn" class="btn-sm" style="margin-left: 1rem; border-color: var(--red); color: var(--red);">Logout</button>
+</div>
+
+  <!-- tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="accesslog">🔐 Access Log</button>
+    <button class="tab-btn" data-tab="users">👥 Users</button>
+    <button class="tab-btn" data-tab="bookings">📅 Bookings</button>
+    <button class="tab-btn" data-tab="stats">📈 Statistics</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="dashboardTab" class="tab-content">
+    <div class="card">
+      <div class="card-title">Room status · room1</div>
+      <div class="occ-row">
+        <div><div class="occ-status" id="occStatusText">—</div><div class="occ-ts" id="occTimestamp"></div></div>
+        <div class="orb" id="occOrb">⌛</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Live occupancy history (last 8h)</div>
+      <canvas id="historyChart" height="150" style="max-height:200px"></canvas>
+    </div>
+  </div>
+
+  <!-- ACCESS LOG TAB -->
+  <div id="accesslogTab" class="tab-content hidden">
+    <div class="card">
+      <div class="flex" style="justify-content:space-between;">
+        <div class="card-title">Access events</div>
+        <div><button id="toggleAccessFilter" class="btn-sm">Show denied only</button></div>
+      </div>
+      <div class="table-wrapper"><table id="accessTable"><thead><tr><th>Time</th><th>Result</th><th>User</th></tr></thead><tbody id="accessTbody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- USERS TAB -->
+  <div id="usersTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Authorized users</div>
+      <div class="table-wrapper"><table><thead><tr><th>PIN</th><th>Name</th><th>Role</th><th>Created</th><th></th></tr></thead><tbody id="usersTbody"></tbody></table></div>
+      <div class="grid-2" style="margin-top:1.5rem;">
+        <div><div class="field-label">New PIN</div><input id="newPin" class="field-input" placeholder="4 digits"></div>
+        <div><div class="field-label">Name</div><input id="newName" class="field-input" placeholder="Full name"></div>
+      </div>
+      <button id="addUserBtn" class="btn" style="margin-top:0.5rem;">+ Add user</button>
+    </div>
+  </div>
+
+  <!-- BOOKINGS TAB -->
+  <div id="bookingsTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Create booking</div>
+      <div class="grid-2">
+        <div><div class="field-label">User name</div><input id="bookName" class="field-input" placeholder="Alice"></div>
+        <div><div class="field-label">Room ID</div><input id="bookRoom" class="field-input" value="room1"></div>
+        <div><div class="field-label">Start</div><input type="datetime-local" id="bookStart" class="field-input"></div>
+        <div><div class="field-label">End</div><input type="datetime-local" id="bookEnd" class="field-input"></div>
+      </div>
+      <button id="createBookingBtn" class="btn">Reserve</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Upcoming bookings</div>
+      <div class="table-wrapper"><table><thead><tr><th>ID</th><th>Room</th><th>User</th><th>Start</th><th>End</th><th></th></tr></thead><tbody id="bookingsTbody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- STATISTICS TAB -->
+  <div id="statsTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Daily keypad activity (last 7 days)</div>
+      <canvas id="dailyChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  const API = ''; // use relative or absolute: 'http://localhost:8000'
+  let token = localStorage.getItem('cwt');
+  let currentAccessFilter = 'all'; // 'all' or 'denied'
+  let occupancyHistory = [];
+  let historyChart = null, dailyChart = null;
+
+  // helpers
+  function toast(msg, type='inf'){
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast`;
+    el.style.borderLeft = `4px solid ${type==='ok'?'#00e87a':type==='err'?'#ff3b5c':'#00d4ff'}`;
+    el.innerText = msg;
+    wrap.appendChild(el);
+    setTimeout(()=>el.remove(), 3000);
+  }
+
+  async function fetchWithAuth(url, opts={}){
+    if(!token) throw new Error('no token');
+    const res = await fetch(`${API}${url}`, {
+      ...opts,
+      headers: { ...opts.headers, 'Authorization': `Bearer ${token}` }
+    });
+    if(res.status === 401){ logout(); throw new Error('session expired'); }
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function setConn(online){
+    const dot = document.getElementById('connDot');
+    const lbl = document.getElementById('connLabel');
+    dot.className = `conn-dot ${online ? 'online' : 'offline'}`;
+    lbl.innerText = online ? 'online' : 'offline';
+  }
+
+  // ---- OCCUPANCY ----
+  async function fetchStatus(){
+    try{
+      const res = await fetch(`${API}/status?room_id=room1`);
+      if(!res.ok) throw new Error();
+      const data = await res.json();
+      const status = data.status;
+      const ts = data.timestamp;
+      const textEl = document.getElementById('occStatusText');
+      const orb = document.getElementById('occOrb');
+      textEl.className = 'occ-status';
+      textEl.classList.add(status==='occupied'?'occupied':status==='vacant'?'vacant':'');
+      textEl.innerText = status === 'occupied' ? 'Occupied' : status === 'vacant' ? 'Vacant' : 'Unknown';
+      orb.className = `orb ${status==='occupied'?'occupied':status==='vacant'?'vacant':''}`;
+      orb.innerText = status==='occupied'?'👤':status==='vacant'?'○':'—';
+      if(ts) document.getElementById('occTimestamp').innerText = new Date(ts).toLocaleTimeString();
+      setConn(true);
+    }catch(e){ setConn(false); }
+  }
+
+  async function fetchOccupancyHistory(){
+    try{
+      const end = new Date().toISOString();
+      const start = new Date(Date.now()-8*3600*1000).toISOString();
+      const url = `/occupancy/history?room_id=room1&start=${start}&end=${end}`;
+      const data = await fetchWithAuth(url, {});
+      occupancyHistory = data;
+      renderHistoryChart();
+    }catch(e){ console.warn(e); }
+  }
+
+  function renderHistoryChart(){
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    const points = occupancyHistory.map(p => ({x: new Date(p.time), y: p.status === 'occupied' ? 1 : 0}));
+    if(historyChart) historyChart.destroy();
+    historyChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets: [{ label: 'Occupancy (1=occupied,0=vacant)', data: points, borderColor: '#00d4ff', tension: 0.2, fill: false }] },
+      options: { responsive: true, maintainAspectRatio: true, scales: { y: { min: -0.2, max: 1.2, ticks: { stepSize: 1, callback: v=> v===1?'Occupied':'Vacant' } } } }
+    });
+  }
+
+  // ---- ACCESS LOG ----
+  async function fetchAccessLog(){
+    if(!token) return;
+    try{
+      let url = `/access/log?room_id=room1&hours=48`;
+      if(currentAccessFilter === 'denied') url += '&result=denied';
+      const data = await fetchWithAuth(url);
+      renderAccessTable(data);
+    }catch(e){ console.warn(e); }
+  }
+  function renderAccessTable(entries){
+    const tbody = document.getElementById('accessTbody');
+    tbody.innerHTML = '';
+    entries.slice(0,50).forEach(e => {
+      const row = tbody.insertRow();
+      row.insertCell(0).innerText = new Date(e.time).toLocaleString();
+      row.insertCell(1).innerHTML = `<span class="badge ${e.result}">${e.result}</span>`;
+      row.insertCell(2).innerText = e.user || 'unknown';
+    });
+  }
+
+  // ---- USERS ----
+  async function fetchUsers(){
+    if(!token) return;
+    try{
+      const users = await fetchWithAuth('/users');
+      const tbody = document.getElementById('usersTbody');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = u.pin;
+        row.insertCell(1).innerText = u.name;
+        row.insertCell(2).innerText = u.role;
+        row.insertCell(3).innerText = u.created_at;
+        const delBtn = document.createElement('button');
+        delBtn.innerText = 'delete';
+        delBtn.className = 'btn-sm danger';
+        delBtn.onclick = async ()=> { if(confirm(`Delete ${u.name}?`)){ await fetchWithAuth(`/users/${u.pin}`, {method:'DELETE'}); toast('Deleted','ok'); fetchUsers(); }};
+        const cell = row.insertCell(4);
+        cell.appendChild(delBtn);
+      });
+    }catch(e){ toast('Failed to load users','err'); }
+  }
+
+  // ---- BOOKINGS ----
+  async function fetchBookings(){
+    if(!token) return;
+    try{
+      const bookings = await fetchWithAuth('/bookings?room_id=room1');
+      const tbody = document.getElementById('bookingsTbody');
+      tbody.innerHTML = '';
+      bookings.forEach(b => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = b.id;
+        row.insertCell(1).innerText = b.room_id;
+        row.insertCell(2).innerText = b.user_name;
+        row.insertCell(3).innerText = new Date(b.start_time).toLocaleString();
+        row.insertCell(4).innerText = new Date(b.end_time).toLocaleString();
+        const cancelBtn = document.createElement('button');
+        cancelBtn.innerText = 'cancel';
+        cancelBtn.className = 'btn-sm danger';
+        cancelBtn.onclick = async ()=> { if(confirm('Cancel booking?')){ await fetchWithAuth(`/bookings/${b.id}`, {method:'DELETE'}); toast('Cancelled','ok'); fetchBookings(); }};
+        const cell = row.insertCell(5);
+        cell.appendChild(cancelBtn);
+      });
+    }catch(e){ toast('Bookings load error','err'); }
+  }
+
+  async function createBooking(){
+    const user_name = document.getElementById('bookName').value.trim();
+    const room_id = document.getElementById('bookRoom').value.trim();
+    let start = document.getElementById('bookStart').value;
+    let end = document.getElementById('bookEnd').value;
+    if(!user_name || !room_id || !start || !end){ toast('Fill all fields','err'); return; }
+    start = new Date(start).toISOString();
+    end = new Date(end).toISOString();
+    try{
+      await fetchWithAuth('/bookings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({room_id, user_name, start_time: start, end_time: end})});
+      toast('Booking created','ok');
+      fetchBookings();
+      document.getElementById('bookName').value = '';
+    }catch(e){ toast('Booking failed: '+e.message,'err'); }
+  }
+
+  // ---- STATISTICS ----
+  async function fetchDailyStats(){
+    if(!token) return;
+    try{
+      const stats = await fetchWithAuth('/stats/daily?room_id=room1&days=7');
+      const ctx = document.getElementById('dailyChart').getContext('2d');
+      const denied = stats.denied || [];
+      const granted = stats.granted || [];
+      const dates = [...new Set([...denied.map(d=>d.time.slice(0,10)), ...granted.map(g=>g.time.slice(0,10))])].sort();
+      const deniedCount = dates.map(d => denied.find(x=>x.time.startsWith(d))?.count || 0);
+      const grantedCount = dates.map(d => granted.find(x=>x.time.startsWith(d))?.count || 0);
+      if(dailyChart) dailyChart.destroy();
+      dailyChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: dates, datasets: [{ label:'Denied', data:deniedCount, backgroundColor:'#ff3b5c' }, { label:'Granted', data:grantedCount, backgroundColor:'#00e87a' }] },
+        options: { responsive: true, maintainAspectRatio: true }
+      });
+    }catch(e){ console.warn(e); }
+  }
+
+  // ---- AUTH & UI ----
+  function logout() {
+  localStorage.removeItem('cwt');
+  token = null;
+  toast('Logged out', 'ok');
+  // Clear all protected content
+  document.getElementById('accessTbody').innerHTML = '<tr><td colspan="3">Login required</td></tr>';
+  document.getElementById('usersTbody').innerHTML = '<tr><td colspan="5">Login required</td></tr>';
+  document.getElementById('bookingsTbody').innerHTML = '<tr><td colspan="6">Login required</td></tr>';
+  // Optionally clear charts or show placeholder
+  // Prompt to login again after a short delay
+  setTimeout(() => promptLogin(), 500);
+}
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  async function login(username, password){
+    try{
+      const res = await fetch(`${API}/auth/token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username,password}) });
+      if(!res.ok) throw new Error();
+      const data = await res.json();
+      token = data.access_token;
+      localStorage.setItem('cwt', token);
+      toast('Authenticated','ok');
+      // refresh all protected data
+      fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();
+      return true;
+    }catch(e){ toast('Login failed','err'); return false; }
+  }
+
+  // simple login modal because we need creds
+  function promptLogin(){
+    const user = prompt('Username:','admin');
+    if(!user) return;
+    const pwd = prompt('Password:','admin');
+    if(pwd) login(user, pwd);
+  }
+
+  // TAB SWITCHING
+  const tabs = document.querySelectorAll('.tab-btn');
+  const contents = { dashboard:'dashboardTab', accesslog:'accesslogTab', users:'usersTab', bookings:'bookingsTab', stats:'statsTab' };
+  function switchTab(tabId){
+    Object.keys(contents).forEach(id => document.getElementById(contents[id]).classList.add('hidden'));
+    document.getElementById(contents[tabId]).classList.remove('hidden');
+    tabs.forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    if(tabId === 'accesslog') fetchAccessLog();
+    if(tabId === 'users') fetchUsers();
+    if(tabId === 'bookings') fetchBookings();
+    if(tabId === 'stats') fetchDailyStats();
+    if(tabId === 'dashboard') fetchOccupancyHistory();
+  }
+  tabs.forEach(btn => btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
+
+  // event listeners
+  document.getElementById('toggleAccessFilter').addEventListener('click', ()=>{
+    currentAccessFilter = currentAccessFilter === 'all' ? 'denied' : 'all';
+    document.getElementById('toggleAccessFilter').innerText = currentAccessFilter === 'all' ? 'Show denied only' : 'Show all events';
+    fetchAccessLog();
+  });
+  document.getElementById('addUserBtn').addEventListener('click', async ()=>{
+    const pin = document.getElementById('newPin').value.trim();
+    const name = document.getElementById('newName').value.trim();
+    if(!pin || !name || !/^\d{4}$/.test(pin)){ toast('PIN must be 4 digits','err'); return; }
+    try{
+      await fetchWithAuth('/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pin,name,role:'user'}) });
+      toast('User added','ok');
+      fetchUsers();
+      document.getElementById('newPin').value = ''; document.getElementById('newName').value = '';
+    }catch(e){ toast(e.message,'err'); }
+  });
+  document.getElementById('createBookingBtn').addEventListener('click', createBooking);
+
+  // init polling & login if token exists
+  if(token){
+    fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();
+  } else {
+    promptLogin(); // first time, ask for login
+    // after login (callback) will refresh, but we set a small interval to recheck
+    setTimeout(()=>{ if(token){ fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();}}, 500);
+  }
+  fetchStatus();
+  setInterval(fetchStatus, 4000);
+  setInterval(()=>{ if(token) fetchAccessLog(); }, 15000);
+  setInterval(()=>{ if(token) fetchDailyStats(); }, 60000);
+  // set datetime-local defaults
+  const now = new Date();
+  now.setMinutes(0,0,0);
+  now.setHours(now.getHours()+1);
+  document.getElementById('bookStart').value = now.toISOString().slice(0,16);
+  const end = new Date(now); end.setHours(end.getHours()+2);
+  document.getElementById('bookEnd').value = end.toISOString().slice(0,16);
+</script>
+</body>
+</html>

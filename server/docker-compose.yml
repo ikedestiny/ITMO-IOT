@@ -13,18 +13,18 @@ services:
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
 
-  node-red:
-    image: nodered/node-red:latest
-    user: "root"
-    container_name: node-red
-    restart: unless-stopped
-    ports:
-      - "1880:1880"
-    depends_on:
-      - mosquitto
-      - influxdb
-    environment:
-      - TZ=Europe/Moscow
+  # node-red:
+  #   image: nodered/node-red:latest
+  #   user: "root"
+  #   container_name: node-red
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1880:1880"
+  #   depends_on:
+  #     - mosquitto
+  #     - influxdb
+  #   environment:
+  #     - TZ=Europe/Moscow
 
   influxdb:
     image: influxdb:2
@@ -64,6 +64,9 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    volumes:
+      - ./data/users.db:/app/users.db:z
+      - ./data/bookings.db:/app/bookings.db:z
     environment:
       - MQTT_BROKER=mosquitto
       - MQTT_PORT=1883
@@ -74,41 +77,28 @@ services:
       - INFLUX_ORG=coworking
       - INFLUX_BUCKET=occupancy
       - JWT_SECRET=change-this-secret-in-production
+      - USERS_DB_PATH=/app/users.db          # <-- ADD THIS
+      - BOOKINGS_DB_PATH=/app/bookings.db    # <-- ADD THIS
     depends_on:
       - mosquitto
       - influxdb
 
-  telegram-bot:
-    build: ../backend/bot
-    container_name: telegram-bot
-    restart: unless-stopped
-    environment:
-      - BOT_TOKEN=8635728420:AAEj0owtIr4m69u5z9hRUEAoQQajWd7KVR4
-      - API_URL=http://fastapi:8000
-      - MQTT_BROKER=mosquitto
-      - MQTT_PORT=1883
-      - MQTT_USER=server
-      - MQTT_PASS=serverpass
-    depends_on:
-      - fastapi
-      - mosquitto
+  # telegram-bot:
+  #   build: ../backend/bot
+  #   container_name: telegram-bot
+  #   restart: unless-stopped
+  #   environment:
+  #     - BOT_TOKEN=8635728420:AAEj0owtIr4m69u5z9hRUEAoQQajWd7KVR4
+  #     - API_URL=http://fastapi:8000
+  #     - MQTT_BROKER=mosquitto
+  #     - MQTT_PORT=1883
+  #     - MQTT_USER=server
+  #     - MQTT_PASS=serverpass
+  #   depends_on:
+  #     - fastapi
+  #     - mosquitto
 
-  bridge:
-    build: ../backend/bridge
-    container_name: bridge
-    restart: unless-stopped
-    environment:
-      - MQTT_BROKER=mosquitto
-      - MQTT_PORT=1883
-      - MQTT_USER=server
-      - MQTT_PASS=serverpass
-      - INFLUX_URL=http://influxdb:8086
-      - INFLUX_TOKEN=my-super-secret-token
-      - INFLUX_ORG=coworking
-      - INFLUX_BUCKET=occupancy
-    depends_on:
-      - mosquitto
-      - influxdb
+
 
   nginx:
     image: nginx:alpine
