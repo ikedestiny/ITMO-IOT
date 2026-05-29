@@ -1,694 +1,642 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COWORK — Room Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg:        #080c10;
-  --surface:   #0d1520;
-  --border:    rgba(255,255,255,0.06);
-  --text:      #e8edf2;
-  --muted:     #4a5568;
-  --accent:    #00d4ff;
-  --green:     #00e87a;
-  --red:       #ff3b5c;
-  --amber:     #ffb020;
-  --mono:      'DM Mono', monospace;
-  --sans:      'Syne', sans-serif;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>COWORK · smart room intelligence</title>
+  <!-- Chart.js CDN for statistics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080c10;
+      --surface: #0d1520;
+      --border: rgba(255,255,255,0.06);
+      --text: #e8edf2;
+      --muted: #6c7a8a;
+      --accent: #00d4ff;
+      --green: #00e87a;
+      --red: #ff3b5c;
+      --amber: #ffb020;
+      --mono: 'DM Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
 
-/* ── Grid background ── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
-  z-index: 0;
-}
+    /* grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-/* ── Layout ── */
-.shell {
-  position: relative;
-  z-index: 1;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
-  display: grid;
-  gap: 1.25rem;
-}
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
 
-/* ── Header ── */
-.header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
+    /* header */
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .wordmark {
+      font-size: 0.7rem;
+      font-family: var(--mono);
+      letter-spacing: 0.4em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .conn-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+      transition: background 0.2s;
+    }
+    .conn-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .conn-dot.offline { background: var(--red); }
 
-.wordmark {
-  font-size: 0.65rem;
-  font-family: var(--mono);
-  letter-spacing: 0.35em;
-  color: var(--accent);
-  text-transform: uppercase;
-}
+    /* tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 2rem;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.3);
+    }
+    .tab-btn:hover:not(.active) {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+    }
 
-.conn-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
+    /* cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
 
-.conn-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--amber);
-  transition: background 0.4s;
-}
-.conn-dot.online  { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.conn-dot.offline { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+    /* occupancy card */
+    .occ-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+    .occ-status {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1;
+    }
+    .occ-status.occupied { color: var(--red); }
+    .occ-status.vacant { color: var(--green); }
+    .occ-ts {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .orb {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+    .orb.occupied { border-color: var(--red); background: rgba(255,59,92,0.05); }
+    .orb.vacant { border-color: var(--green); background: rgba(0,232,122,0.05); }
 
-/* ── Cards ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 1.5rem;
-  padding: 1.75rem 2rem;
-  position: relative;
-  overflow: hidden;
-}
+    /* tables / lists */
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--accent);
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+    .badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 20px;
+      font-size: 0.6rem;
+      background: rgba(0,0,0,0.3);
+    }
+    .badge.granted { color: var(--green); border:1px solid rgba(0,232,122,0.3); }
+    .badge.denied { color: var(--red); border:1px solid rgba(255,59,92,0.3); }
 
-.card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent);
-}
+    .btn-sm {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      border-radius: 1rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      cursor: pointer;
+    }
+    .btn-sm.danger:hover { border-color: var(--red); color: var(--red); }
 
-.card-label {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.3em;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 1.25rem;
-}
-
-/* ── Occupancy card ── */
-.occ-card {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 2rem;
-}
-
-.occ-status-text {
-  font-size: clamp(3rem, 8vw, 5.5rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  transition: color 0.5s, opacity 0.3s;
-}
-
-.occ-status-text.occupied { color: var(--red); }
-.occ-status-text.vacant   { color: var(--green); }
-.occ-status-text.unknown  { color: var(--muted); }
-
-.occ-meta {
-  margin-top: 0.75rem;
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-.occ-ts {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
-.occ-badge {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  border: 1px solid;
-  transition: all 0.4s;
-}
-.occ-badge.occupied { color: var(--red);   border-color: rgba(255,59,92,0.3);  background: rgba(255,59,92,0.08); }
-.occ-badge.vacant   { color: var(--green); border-color: rgba(0,232,122,0.3);  background: rgba(0,232,122,0.08); }
-.occ-badge.unknown  { color: var(--muted); border-color: rgba(74,85,104,0.3);  background: transparent; }
-
-/* Orb */
-.orb-wrap {
-  position: relative;
-  width: 100px; height: 100px;
-  flex-shrink: 0;
-}
-
-.orb {
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.2rem;
-  transition: border-color 0.5s, background 0.5s, box-shadow 0.5s;
-  position: relative;
-  z-index: 1;
-}
-
-.orb.occupied {
-  border-color: rgba(255,59,92,0.4);
-  background: rgba(255,59,92,0.06);
-  box-shadow: 0 0 30px rgba(255,59,92,0.15), inset 0 0 20px rgba(255,59,92,0.05);
-  animation: orbBusy 2s ease-in-out infinite;
-}
-.orb.vacant {
-  border-color: rgba(0,232,122,0.4);
-  background: rgba(0,232,122,0.06);
-  box-shadow: 0 0 30px rgba(0,232,122,0.15), inset 0 0 20px rgba(0,232,122,0.05);
-  animation: orbFree 3s ease-in-out infinite;
-}
-
-@keyframes orbBusy {
-  0%,100% { box-shadow: 0 0 30px rgba(255,59,92,0.15), inset 0 0 20px rgba(255,59,92,0.05); }
-  50%      { box-shadow: 0 0 50px rgba(255,59,92,0.35), inset 0 0 30px rgba(255,59,92,0.1); }
-}
-@keyframes orbFree {
-  0%,100% { box-shadow: 0 0 30px rgba(0,232,122,0.1), inset 0 0 20px rgba(0,232,122,0.04); }
-  50%      { box-shadow: 0 0 50px rgba(0,232,122,0.25), inset 0 0 30px rgba(0,232,122,0.08); }
-}
-
-/* ── Two-col row ── */
-.row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-}
-@media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; } }
-
-/* ── Access log ── */
-.log-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  max-height: 220px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-.log-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.9rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.2);
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  animation: fadeUp 0.3s ease;
-}
-
-.log-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.log-dot.denied  { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.log-dot.granted { background: var(--green); box-shadow: 0 0 6px var(--green); }
-
-.log-label { flex: 1; color: var(--text); }
-.log-time  { color: var(--muted); }
-
-.empty-state {
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  color: var(--muted);
-  text-align: center;
-  padding: 2rem 0;
-  letter-spacing: 0.1em;
-}
-
-/* ── Auth / Booking ── */
-.field-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
-
-.field-label {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.field-input {
-  background: rgba(0,0,0,0.35);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.7rem 1rem;
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  outline: none;
-  width: 100%;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.field-input:focus {
-  border-color: rgba(0,212,255,0.4);
-  box-shadow: 0 0 0 3px rgba(0,212,255,0.08);
-}
-.field-input::placeholder { color: var(--muted); }
-
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-
-.btn {
-  width: 100%;
-  padding: 0.8rem;
-  border-radius: 0.75rem;
-  border: none;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  transition: all 0.2s;
-  margin-top: 0.25rem;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #000;
-  font-weight: 500;
-}
-.btn-primary:hover { background: #33ddff; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
-
-.btn-book {
-  background: rgba(0,232,122,0.12);
-  color: var(--green);
-  border: 1px solid rgba(0,232,122,0.25);
-}
-.btn-book:hover { background: rgba(0,232,122,0.2); box-shadow: 0 0 20px rgba(0,232,122,0.15); }
-
-.btn-danger {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  font-size: 0.6rem;
-  padding: 0.4rem 0.9rem;
-  width: auto;
-  margin-top: 0;
-}
-.btn-danger:hover { color: var(--red); border-color: rgba(255,59,92,0.3); }
-
-/* section header row */
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-
-/* ── Toast ── */
-.toast-wrap {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.toast {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
-  max-width: 300px;
-}
-.toast.ok  { border-color: rgba(0,232,122,0.3);  color: var(--green); }
-.toast.err { border-color: rgba(255,59,92,0.3);   color: var(--red);   }
-.toast.inf { border-color: rgba(0,212,255,0.3);   color: var(--accent); }
-
-@keyframes toastIn  { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: none; } }
-@keyframes toastOut { from { opacity:1; } to { opacity:0; } }
-@keyframes fadeUp   { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
-
-.hidden { display: none !important; }
-
-/* ── Divider ── */
-.divider {
-  height: 1px;
-  background: var(--border);
-  margin: 1rem 0;
-}
-</style>
+    .field-group {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .field-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+    }
+    .field-input {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.6rem 1rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+    .btn {
+      background: var(--accent);
+      border: none;
+      padding: 0.7rem 1.2rem;
+      border-radius: 1rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #000;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .toast-wrap {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      border-radius: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      animation: fadein 0.2s;
+    }
+    @keyframes fadein { from { opacity:0; transform: translateY(5px); } to { opacity:1; } }
+    .hidden { display: none !important; }
+    .flex { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width:700px){ .grid-2 { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
-
-<div class="shell">
-
-  <!-- Header -->
-  <header class="header">
-    <span class="wordmark">Cowork // Room Intelligence</span>
-    <div class="conn-pill">
-      <div class="conn-dot" id="conn-dot"></div>
-      <span id="conn-label">connecting</span>
-    </div>
-  </header>
-
-  <!-- Occupancy -->
-  <div class="card">
-    <div class="card-label">Room Status — <span id="room-id-label">room1</span></div>
-    <div class="occ-card">
-      <div>
-        <div class="occ-status-text unknown" id="occ-text">—</div>
-        <div class="occ-meta">
-          <span class="occ-badge unknown" id="occ-badge">unknown</span>
-          <span class="occ-ts" id="occ-ts">--:--:--</span>
-        </div>
-      </div>
-      <div class="orb-wrap">
-        <div class="orb" id="occ-orb">⌛</div>
-      </div>
-    </div>
+<div class="app">
+  <div class="header">
+    <span class="wordmark">COWORK // ROOM INTELLIGENCE</span>
+    <div class="conn-pill"><div class="conn-dot" id="connDot"></div><span id="connLabel">connecting</span></div>
   </div>
 
-  <!-- Access log + Auth side by side -->
-  <div class="row-2">
-
-    <!-- Access log -->
-    <div class="card">
-      <div class="section-head">
-        <span class="card-label" style="margin:0">Access log</span>
-        <span id="alert-count" style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);letter-spacing:0.1em"></span>
-      </div>
-      <div class="log-list" id="log-list">
-        <div class="empty-state">loading…</div>
-      </div>
-    </div>
-
-    <!-- Auth / Booking -->
-    <div class="card">
-
-      <!-- Login -->
-      <div id="login-panel">
-        <div class="card-label">Admin access</div>
-        <div class="field-group">
-          <label class="field-label">Username</label>
-          <input class="field-input" type="text" id="login-user" placeholder="admin" autocomplete="username">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Password</label>
-          <input class="field-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
-        </div>
-        <button class="btn btn-primary" id="login-btn">Authenticate</button>
-      </div>
-
-      <!-- Booking -->
-      <div id="booking-panel" class="hidden">
-        <div class="section-head">
-          <span class="card-label" style="margin:0">Book room</span>
-          <button class="btn btn-danger" id="logout-btn">Sign out</button>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Name</label>
-          <input class="field-input" type="text" id="book-name" placeholder="Alice (Manager)">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Room ID</label>
-          <input class="field-input" type="text" id="book-room" value="room1">
-        </div>
-        <div class="field-row">
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Start</label>
-            <input class="field-input" type="datetime-local" id="book-start">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">End</label>
-            <input class="field-input" type="datetime-local" id="book-end">
-          </div>
-        </div>
-        <button class="btn btn-book" id="book-btn" style="margin-top:1rem">Reserve slot</button>
-      </div>
-
-    </div>
-  </div>
-
+  <div class="conn-pill">
+  <div class="conn-dot" id="connDot"></div>
+  <span id="connLabel">connecting</span>
+  <button id="logoutBtn" class="btn-sm" style="margin-left: 1rem; border-color: var(--red); color: var(--red);">Logout</button>
 </div>
 
-<!-- Toasts -->
-<div class="toast-wrap" id="toast-wrap"></div>
+  <!-- tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="accesslog">🔐 Access Log</button>
+    <button class="tab-btn" data-tab="users">👥 Users</button>
+    <button class="tab-btn" data-tab="bookings">📅 Bookings</button>
+    <button class="tab-btn" data-tab="stats">📈 Statistics</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="dashboardTab" class="tab-content">
+    <div class="card">
+      <div class="card-title">Room status · room1</div>
+      <div class="occ-row">
+        <div><div class="occ-status" id="occStatusText">—</div><div class="occ-ts" id="occTimestamp"></div></div>
+        <div class="orb" id="occOrb">⌛</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Live occupancy history (last 8h)</div>
+      <canvas id="historyChart" height="150" style="max-height:200px"></canvas>
+    </div>
+  </div>
+
+  <!-- ACCESS LOG TAB -->
+  <div id="accesslogTab" class="tab-content hidden">
+    <div class="card">
+      <div class="flex" style="justify-content:space-between;">
+        <div class="card-title">Access events</div>
+        <div><button id="toggleAccessFilter" class="btn-sm">Show denied only</button></div>
+      </div>
+      <div class="table-wrapper"><table id="accessTable"><thead><tr><th>Time</th><th>Result</th><th>User</th></tr></thead><tbody id="accessTbody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- USERS TAB -->
+  <div id="usersTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Authorized users</div>
+      <div class="table-wrapper"><table><thead><tr><th>PIN</th><th>Name</th><th>Role</th><th>Created</th><th></th></tr></thead><tbody id="usersTbody"></tbody></table></div>
+      <div class="grid-2" style="margin-top:1.5rem;">
+        <div><div class="field-label">New PIN</div><input id="newPin" class="field-input" placeholder="4 digits"></div>
+        <div><div class="field-label">Name</div><input id="newName" class="field-input" placeholder="Full name"></div>
+      </div>
+      <button id="addUserBtn" class="btn" style="margin-top:0.5rem;">+ Add user</button>
+    </div>
+  </div>
+
+  <!-- BOOKINGS TAB -->
+  <div id="bookingsTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Create booking</div>
+      <div class="grid-2">
+        <div><div class="field-label">User name</div><input id="bookName" class="field-input" placeholder="Alice"></div>
+        <div><div class="field-label">Room ID</div><input id="bookRoom" class="field-input" value="room1"></div>
+        <div><div class="field-label">Start</div><input type="datetime-local" id="bookStart" class="field-input"></div>
+        <div><div class="field-label">End</div><input type="datetime-local" id="bookEnd" class="field-input"></div>
+      </div>
+      <button id="createBookingBtn" class="btn">Reserve</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Upcoming bookings</div>
+      <div class="table-wrapper"><table><thead><tr><th>ID</th><th>Room</th><th>User</th><th>Start</th><th>End</th><th></th></tr></thead><tbody id="bookingsTbody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- STATISTICS TAB -->
+  <div id="statsTab" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Daily keypad activity (last 7 days)</div>
+      <canvas id="dailyChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
 
 <script>
-const API = 'http://localhost:8000';
-const ROOM = 'room1';
-let token = localStorage.getItem('cwt') || null;
+  const API = ''; // use relative or absolute: 'http://localhost:8000'
+  let token = localStorage.getItem('cwt');
+  let currentAccessFilter = 'all'; // 'all' or 'denied'
+  let occupancyHistory = [];
+  let historyChart = null, dailyChart = null;
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function toast(msg, type = 'inf') {
-  const wrap = document.getElementById('toast-wrap');
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  wrap.appendChild(el);
-  setTimeout(() => el.remove(), 3100);
-}
-
-// ── Connection badge ──────────────────────────────────────────────────────────
-function setConn(state) {
-  const dot = document.getElementById('conn-dot');
-  const lbl = document.getElementById('conn-label');
-  dot.className = 'conn-dot ' + state;
-  lbl.textContent = state === 'online' ? 'online' : state === 'offline' ? 'offline' : 'connecting';
-}
-
-// ── Occupancy ─────────────────────────────────────────────────────────────────
-async function pollStatus() {
-  try {
-    const r = await fetch(`${API}/status?room_id=${ROOM}`);
-    if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
-    renderStatus(d.status, d.timestamp);
-    setConn('online');
-  } catch {
-    renderStatus('unknown', null);
-    setConn('offline');
-  }
-}
-
-function renderStatus(status, ts) {
-  const text  = document.getElementById('occ-text');
-  const badge = document.getElementById('occ-badge');
-  const orb   = document.getElementById('occ-orb');
-  const time  = document.getElementById('occ-ts');
-
-  // clear classes
-  ['occupied','vacant','unknown'].forEach(c => {
-    text.classList.remove(c);
-    badge.classList.remove(c);
-    orb.classList.remove(c);
-  });
-
-  if (status === 'occupied') {
-    text.textContent  = 'Occupied';
-    badge.textContent = 'occupied';
-    orb.textContent   = '👤';
-    text.classList.add('occupied');
-    badge.classList.add('occupied');
-    orb.classList.add('occupied');
-  } else if (status === 'vacant') {
-    text.textContent  = 'Vacant';
-    badge.textContent = 'vacant';
-    orb.textContent   = '○';
-    text.classList.add('vacant');
-    badge.classList.add('vacant');
-    orb.classList.add('vacant');
-  } else {
-    text.textContent  = 'Unknown';
-    badge.textContent = 'no data';
-    orb.textContent   = '—';
-    text.classList.add('unknown');
-    badge.classList.add('unknown');
+  // helpers
+  function toast(msg, type='inf'){
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast`;
+    el.style.borderLeft = `4px solid ${type==='ok'?'#00e87a':type==='err'?'#ff3b5c':'#00d4ff'}`;
+    el.innerText = msg;
+    wrap.appendChild(el);
+    setTimeout(()=>el.remove(), 3000);
   }
 
-  if (ts) {
-    time.textContent = new Date(ts).toLocaleTimeString();
-  }
-}
-
-// ── Access log ────────────────────────────────────────────────────────────────
-async function pollAlerts() {
-  if (!token) return;
-  try {
-    const r = await fetch(`${API}/keypad/alerts?room_id=${ROOM}&hours=24`, {
-      headers: { Authorization: `Bearer ${token}` }
+  async function fetchWithAuth(url, opts={}){
+    if(!token) throw new Error('no token');
+    const res = await fetch(`${API}${url}`, {
+      ...opts,
+      headers: { ...opts.headers, 'Authorization': `Bearer ${token}` }
     });
-    if (r.status === 401) { doLogout(); return; }
-    if (!r.ok) throw new Error(r.status);
-    const alerts = await r.json();
-    renderAlerts(alerts);
-  } catch {
-    // silently fail — log is non-critical
-    renderAlerts("jhdcghd jkdjw")
-  }
-}
-
-function renderAlerts(alerts) {
-  const list  = document.getElementById('log-list');
-  const count = document.getElementById('alert-count');
-
-  if (!alerts.length) {
-    list.innerHTML = '<div class="empty-state">no denied attempts in 24h</div>';
-    count.textContent = '';
-    return;
+    if(res.status === 401){ logout(); throw new Error('session expired'); }
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
   }
 
-  count.textContent = `${alerts.length} attempt${alerts.length > 1 ? 's' : ''}`;
-  list.innerHTML = '';
-  alerts.slice(0, 12).forEach(a => {
-    const row = document.createElement('div');
-    row.className = 'log-row';
-    const timeStr = new Date(a.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    row.innerHTML = `
-      <div class="log-dot ${a.result}"></div>
-      <span class="log-label">${a.result === 'denied' ? 'Denied entry' : a.user || 'Access granted'}</span>
-      <span class="log-time">${timeStr}</span>
-    `;
-    list.appendChild(row);
-  });
-}
+  function setConn(online){
+    const dot = document.getElementById('connDot');
+    const lbl = document.getElementById('connLabel');
+    dot.className = `conn-dot ${online ? 'online' : 'offline'}`;
+    lbl.innerText = online ? 'online' : 'offline';
+  }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value;
-  if (!u || !p) { toast('Fill in both fields', 'err'); return; }
-  try {
-    const r = await fetch(`${API}/auth/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
+  // ---- OCCUPANCY ----
+  async function fetchStatus(){
+    try{
+      const res = await fetch(`${API}/status?room_id=room1`);
+      if(!res.ok) throw new Error();
+      const data = await res.json();
+      const status = data.status;
+      const ts = data.timestamp;
+      const textEl = document.getElementById('occStatusText');
+      const orb = document.getElementById('occOrb');
+      textEl.className = 'occ-status';
+      textEl.classList.add(status==='occupied'?'occupied':status==='vacant'?'vacant':'');
+      textEl.innerText = status === 'occupied' ? 'Occupied' : status === 'vacant' ? 'Vacant' : 'Unknown';
+      orb.className = `orb ${status==='occupied'?'occupied':status==='vacant'?'vacant':''}`;
+      orb.innerText = status==='occupied'?'👤':status==='vacant'?'○':'—';
+      if(ts) document.getElementById('occTimestamp').innerText = new Date(ts).toLocaleTimeString();
+      setConn(true);
+    }catch(e){ setConn(false); }
+  }
+
+  async function fetchOccupancyHistory(){
+    try{
+      const end = new Date().toISOString();
+      const start = new Date(Date.now()-8*3600*1000).toISOString();
+      const url = `/occupancy/history?room_id=room1&start=${start}&end=${end}`;
+      const data = await fetchWithAuth(url, {});
+      occupancyHistory = data;
+      renderHistoryChart();
+    }catch(e){ console.warn(e); }
+  }
+
+  function renderHistoryChart(){
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    const points = occupancyHistory.map(p => ({x: new Date(p.time), y: p.status === 'occupied' ? 1 : 0}));
+    if(historyChart) historyChart.destroy();
+    historyChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets: [{ label: 'Occupancy (1=occupied,0=vacant)', data: points, borderColor: '#00d4ff', tension: 0.2, fill: false }] },
+      options: { responsive: true, maintainAspectRatio: true, scales: { y: { min: -0.2, max: 1.2, ticks: { stepSize: 1, callback: v=> v===1?'Occupied':'Vacant' } } } }
     });
-    if (!r.ok) throw new Error('bad credentials');
-    const d = await r.json();
-    token = d.access_token;
-    localStorage.setItem('cwt', token);
-    showBooking();
-    pollAlerts();
-    toast('Authenticated', 'ok');
-  } catch {
-    toast('Authentication failed', 'err');
   }
-});
 
-document.getElementById('logout-btn').addEventListener('click', doLogout);
+  // ---- ACCESS LOG ----
+  async function fetchAccessLog(){
+    if(!token) return;
+    try{
+      let url = `/access/log?room_id=room1&hours=48`;
+      if(currentAccessFilter === 'denied') url += '&result=denied';
+      const data = await fetchWithAuth(url);
+      renderAccessTable(data);
+    }catch(e){ console.warn(e); }
+  }
+  function renderAccessTable(entries){
+    const tbody = document.getElementById('accessTbody');
+    tbody.innerHTML = '';
+    entries.slice(0,50).forEach(e => {
+      const row = tbody.insertRow();
+      row.insertCell(0).innerText = new Date(e.time).toLocaleString();
+      row.insertCell(1).innerHTML = `<span class="badge ${e.result}">${e.result}</span>`;
+      row.insertCell(2).innerText = e.user || 'unknown';
+    });
+  }
 
-function doLogout() {
+  // ---- USERS ----
+  async function fetchUsers(){
+    if(!token) return;
+    try{
+      const users = await fetchWithAuth('/users');
+      const tbody = document.getElementById('usersTbody');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = u.pin;
+        row.insertCell(1).innerText = u.name;
+        row.insertCell(2).innerText = u.role;
+        row.insertCell(3).innerText = u.created_at;
+        const delBtn = document.createElement('button');
+        delBtn.innerText = 'delete';
+        delBtn.className = 'btn-sm danger';
+        delBtn.onclick = async ()=> { if(confirm(`Delete ${u.name}?`)){ await fetchWithAuth(`/users/${u.pin}`, {method:'DELETE'}); toast('Deleted','ok'); fetchUsers(); }};
+        const cell = row.insertCell(4);
+        cell.appendChild(delBtn);
+      });
+    }catch(e){ toast('Failed to load users','err'); }
+  }
+
+  // ---- BOOKINGS ----
+  async function fetchBookings(){
+    if(!token) return;
+    try{
+      const bookings = await fetchWithAuth('/bookings?room_id=room1');
+      const tbody = document.getElementById('bookingsTbody');
+      tbody.innerHTML = '';
+      bookings.forEach(b => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = b.id;
+        row.insertCell(1).innerText = b.room_id;
+        row.insertCell(2).innerText = b.user_name;
+        row.insertCell(3).innerText = new Date(b.start_time).toLocaleString();
+        row.insertCell(4).innerText = new Date(b.end_time).toLocaleString();
+        const cancelBtn = document.createElement('button');
+        cancelBtn.innerText = 'cancel';
+        cancelBtn.className = 'btn-sm danger';
+        cancelBtn.onclick = async ()=> { if(confirm('Cancel booking?')){ await fetchWithAuth(`/bookings/${b.id}`, {method:'DELETE'}); toast('Cancelled','ok'); fetchBookings(); }};
+        const cell = row.insertCell(5);
+        cell.appendChild(cancelBtn);
+      });
+    }catch(e){ toast('Bookings load error','err'); }
+  }
+
+  async function createBooking(){
+    const user_name = document.getElementById('bookName').value.trim();
+    const room_id = document.getElementById('bookRoom').value.trim();
+    let start = document.getElementById('bookStart').value;
+    let end = document.getElementById('bookEnd').value;
+    if(!user_name || !room_id || !start || !end){ toast('Fill all fields','err'); return; }
+    start = new Date(start).toISOString();
+    end = new Date(end).toISOString();
+    try{
+      await fetchWithAuth('/bookings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({room_id, user_name, start_time: start, end_time: end})});
+      toast('Booking created','ok');
+      fetchBookings();
+      document.getElementById('bookName').value = '';
+    }catch(e){ toast('Booking failed: '+e.message,'err'); }
+  }
+
+  // ---- STATISTICS ----
+  async function fetchDailyStats(){
+    if(!token) return;
+    try{
+      const stats = await fetchWithAuth('/stats/daily?room_id=room1&days=7');
+      const ctx = document.getElementById('dailyChart').getContext('2d');
+      const denied = stats.denied || [];
+      const granted = stats.granted || [];
+      const dates = [...new Set([...denied.map(d=>d.time.slice(0,10)), ...granted.map(g=>g.time.slice(0,10))])].sort();
+      const deniedCount = dates.map(d => denied.find(x=>x.time.startsWith(d))?.count || 0);
+      const grantedCount = dates.map(d => granted.find(x=>x.time.startsWith(d))?.count || 0);
+      if(dailyChart) dailyChart.destroy();
+      dailyChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: dates, datasets: [{ label:'Denied', data:deniedCount, backgroundColor:'#ff3b5c' }, { label:'Granted', data:grantedCount, backgroundColor:'#00e87a' }] },
+        options: { responsive: true, maintainAspectRatio: true }
+      });
+    }catch(e){ console.warn(e); }
+  }
+
+  // ---- AUTH & UI ----
+  function logout() {
   localStorage.removeItem('cwt');
   token = null;
-  document.getElementById('login-panel').classList.remove('hidden');
-  document.getElementById('booking-panel').classList.add('hidden');
-  document.getElementById('log-list').innerHTML = '<div class="empty-state">sign in to view log</div>';
-  document.getElementById('alert-count').textContent = '';
+  toast('Logged out', 'ok');
+  // Clear all protected content
+  document.getElementById('accessTbody').innerHTML = '<tr><td colspan="3">Login required</td></tr>';
+  document.getElementById('usersTbody').innerHTML = '<tr><td colspan="5">Login required</td></tr>';
+  document.getElementById('bookingsTbody').innerHTML = '<tr><td colspan="6">Login required</td></tr>';
+  // Optionally clear charts or show placeholder
+  // Prompt to login again after a short delay
+  setTimeout(() => promptLogin(), 500);
 }
 
-function showBooking() {
-  document.getElementById('login-panel').classList.add('hidden');
-  document.getElementById('booking-panel').classList.remove('hidden');
-  // Pre-fill sensible defaults
-  const now = new Date();
-  now.setMinutes(0, 0, 0);
-  now.setHours(now.getHours() + 1);
-  document.getElementById('book-start').value = now.toISOString().slice(0,16);
-  const end = new Date(now);
-  end.setHours(end.getHours() + 2);
-  document.getElementById('book-end').value = end.toISOString().slice(0,16);
-}
+document.getElementById('logoutBtn').addEventListener('click', logout);
 
-// ── Booking ───────────────────────────────────────────────────────────────────
-document.getElementById('book-btn').addEventListener('click', async () => {
-  const name  = document.getElementById('book-name').value.trim();
-  const room  = document.getElementById('book-room').value.trim();
-  const start = document.getElementById('book-start').value;
-  const end   = document.getElementById('book-end').value;
-
-  if (!name || !room || !start || !end) { toast('Fill all fields', 'err'); return; }
-
-  const s = new Date(start), e = new Date(end);
-  if (s >= e) { toast('End must be after start', 'err'); return; }
-
-  try {
-    const r = await fetch(`${API}/booking`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        room_id: room,
-        user_name: name,
-        start_time: s.toISOString(),
-        end_time: e.toISOString()
-      })
-    });
-    if (r.status === 401) { doLogout(); toast('Session expired', 'err'); return; }
-    if (r.status === 409) { toast('Time slot already booked', 'err'); return; }
-    if (!r.ok) throw new Error('server error');
-    toast('Slot reserved', 'ok');
-    document.getElementById('book-name').value = '';
-  } catch {
-    toast('Booking failed', 'err');
+  async function login(username, password){
+    try{
+      const res = await fetch(`${API}/auth/token`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username,password}) });
+      if(!res.ok) throw new Error();
+      const data = await res.json();
+      token = data.access_token;
+      localStorage.setItem('cwt', token);
+      toast('Authenticated','ok');
+      // refresh all protected data
+      fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();
+      return true;
+    }catch(e){ toast('Login failed','err'); return false; }
   }
-});
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-if (token) {
-  showBooking();
-  pollAlerts();
-} else {
-  document.getElementById('log-list').innerHTML =
-    '<div class="empty-state">sign in to view log</div>';
-}
+  // simple login modal because we need creds
+  function promptLogin(){
+    const user = prompt('Username:','admin');
+    if(!user) return;
+    const pwd = prompt('Password:','admin');
+    if(pwd) login(user, pwd);
+  }
 
-pollStatus();
-setInterval(pollStatus, 4000);
-setInterval(() => { if (token) pollAlerts(); }, 15000);
+  // TAB SWITCHING
+  const tabs = document.querySelectorAll('.tab-btn');
+  const contents = { dashboard:'dashboardTab', accesslog:'accesslogTab', users:'usersTab', bookings:'bookingsTab', stats:'statsTab' };
+  function switchTab(tabId){
+    Object.keys(contents).forEach(id => document.getElementById(contents[id]).classList.add('hidden'));
+    document.getElementById(contents[tabId]).classList.remove('hidden');
+    tabs.forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    if(tabId === 'accesslog') fetchAccessLog();
+    if(tabId === 'users') fetchUsers();
+    if(tabId === 'bookings') fetchBookings();
+    if(tabId === 'stats') fetchDailyStats();
+    if(tabId === 'dashboard') fetchOccupancyHistory();
+  }
+  tabs.forEach(btn => btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
+
+  // event listeners
+  document.getElementById('toggleAccessFilter').addEventListener('click', ()=>{
+    currentAccessFilter = currentAccessFilter === 'all' ? 'denied' : 'all';
+    document.getElementById('toggleAccessFilter').innerText = currentAccessFilter === 'all' ? 'Show denied only' : 'Show all events';
+    fetchAccessLog();
+  });
+  document.getElementById('addUserBtn').addEventListener('click', async ()=>{
+    const pin = document.getElementById('newPin').value.trim();
+    const name = document.getElementById('newName').value.trim();
+    if(!pin || !name || !/^\d{4}$/.test(pin)){ toast('PIN must be 4 digits','err'); return; }
+    try{
+      await fetchWithAuth('/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pin,name,role:'user'}) });
+      toast('User added','ok');
+      fetchUsers();
+      document.getElementById('newPin').value = ''; document.getElementById('newName').value = '';
+    }catch(e){ toast(e.message,'err'); }
+  });
+  document.getElementById('createBookingBtn').addEventListener('click', createBooking);
+
+  // init polling & login if token exists
+  if(token){
+    fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();
+  } else {
+    promptLogin(); // first time, ask for login
+    // after login (callback) will refresh, but we set a small interval to recheck
+    setTimeout(()=>{ if(token){ fetchAccessLog(); fetchUsers(); fetchBookings(); fetchDailyStats(); fetchOccupancyHistory();}}, 500);
+  }
+  fetchStatus();
+  setInterval(fetchStatus, 4000);
+  setInterval(()=>{ if(token) fetchAccessLog(); }, 15000);
+  setInterval(()=>{ if(token) fetchDailyStats(); }, 60000);
+  // set datetime-local defaults
+  const now = new Date();
+  now.setMinutes(0,0,0);
+  now.setHours(now.getHours()+1);
+  document.getElementById('bookStart').value = now.toISOString().slice(0,16);
+  const end = new Date(now); end.setHours(end.getHours()+2);
+  document.getElementById('bookEnd').value = end.toISOString().slice(0,16);
 </script>
 </body>
 </html>
